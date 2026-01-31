@@ -74,11 +74,14 @@ The AI will see your previous analysis and focus on new questions.
 |------|-------------|
 | `--output` | Output file path (defaults to input file) |
 | `--continue` | Session ID to continue a previous conversation |
+| `--from-response` | Resume from a specific response ID (for rollback) |
 | `--reset` | Start fresh, ignoring stored session state |
 | `--cwd` | Working directory for file operations |
 | `--scout-model` | Model for scout dispatcher (default: gpt-5.2) |
 | `--reasoning-effort` | Reasoning effort: low, medium, high, xhigh (default: xhigh) |
 | `--debug` | Enable debug logging |
+
+> **Note:** `--continue` and `--from-response` are mutually exclusive.
 
 ## How It Works
 

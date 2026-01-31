@@ -21,6 +21,7 @@ type CLI struct {
 	Output          string `help:"Path to output markdown document (defaults to input file)"`
 	Debug           bool   `help:"Enable debug logging"`
 	Continue        string `help:"Session id to continue a previous conversation" name:"continue"`
+	FromResponse    string `help:"Resume from a specific response ID (for rollback)" name:"from-response"`
 	Reset           bool   `help:"Ignore stored session state and start a fresh conversation"`
 	ScoutModel      string `help:"Model to use for scout dispatcher (default: gpt-5.2)" default:"gpt-5.2"`
 	ReasoningEffort string `help:"Reasoning effort for researcher: low, medium, high, xhigh (default: xhigh)" default:"xhigh" enum:"low,medium,high,xhigh"`
@@ -33,6 +34,11 @@ func (c *CLI) Run() error {
 		log.SetLevel(log.DebugLevel)
 	} else {
 		log.SetLevel(log.InfoLevel)
+	}
+
+	// Validate mutually exclusive flags
+	if c.Continue != "" && c.FromResponse != "" {
+		return fmt.Errorf("--continue and --from-response are mutually exclusive")
 	}
 
 	// Change working directory if specified
@@ -93,7 +99,12 @@ func (c *CLI) Run() error {
 
 	var previousResponseID string
 	var existingSession *client.Session
-	if !c.Reset {
+
+	// Handle --from-response flag (explicit rollback to a specific response)
+	if c.FromResponse != "" {
+		previousResponseID = c.FromResponse
+		log.Info("Resuming from response", "response_id", previousResponseID)
+	} else if !c.Reset {
 		if sess, err := store.Load(continueID); err == nil {
 			existingSession = sess
 			previousResponseID = sess.PreviousResponseID
