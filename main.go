@@ -148,6 +148,11 @@ func (c *CLI) Run() error {
 	}
 
 	log.Info("Analysis complete", "output", outputPath)
+
+	// Print session info for user reference
+	fmt.Fprintf(os.Stderr, "\nSession: %s\nResponse: %s\n", continueID, result.ResponseID)
+	fmt.Fprintf(os.Stderr, "To continue: deep-analysis --continue %s <file>\n", continueID)
+
 	return nil
 }
 
