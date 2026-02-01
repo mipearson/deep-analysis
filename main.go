@@ -26,6 +26,7 @@ type CLI struct {
 	ScoutModel      string `help:"Model to use for scout dispatcher (default: gpt-5.2)" default:"gpt-5.2"`
 	ReasoningEffort string `help:"Reasoning effort for researcher: low, medium, high, xhigh (default: xhigh)" default:"xhigh" enum:"low,medium,high,xhigh"`
 	Cwd             string `help:"Working directory for file operations (default: current directory)"`
+	Store           bool   `help:"Store responses in OpenAI dashboard for later retrieval (default: false)" default:"false"`
 }
 
 func (c *CLI) Run() error {
@@ -129,6 +130,7 @@ func (c *CLI) Run() error {
 	result, err := cl.Analyze(ctx, document, client.AnalysisOptions{
 		PreviousResponseID: previousResponseID,
 		ReasoningEffort:    c.ReasoningEffort,
+		Store:              c.Store,
 	})
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)

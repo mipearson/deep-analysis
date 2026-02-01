@@ -37,6 +37,7 @@ type AnalysisOptions struct {
 	PreviousResponseID string
 	ScoutModel         string // Model to use for scout dispatcher (default: gpt-5.2)
 	ReasoningEffort    string // Reasoning effort: low, medium, high, xhigh (default: xhigh)
+	Store              bool   // Store responses in OpenAI dashboard (default: false)
 }
 
 // AnalysisResult contains the final model output and metadata.
@@ -86,6 +87,7 @@ func (c *DeepAnalysisClient) Analyze(ctx context.Context, document string, opts 
 		Tools:          c.tools,
 		PromptCacheKey: openai.Opt(cacheKey),
 		Reasoning:      buildReasoningParam(opts.ReasoningEffort),
+		Store:          openai.Bool(opts.Store),
 	}
 
 	inputItems := responses.ResponseInputParam{
@@ -191,6 +193,7 @@ func (c *DeepAnalysisClient) Analyze(ctx context.Context, document string, opts 
 				OfInputItemList: toolOutputs,
 			},
 			Tools: c.tools,
+			Store: openai.Bool(opts.Store),
 		}
 
 		response, err = c.client.Responses.New(ctx, params)
