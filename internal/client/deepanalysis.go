@@ -15,19 +15,21 @@ import (
 )
 
 const (
-	defaultModel  = "gpt-5.2-pro"
-	maxIterations = 50
+	defaultModel        = "gpt-5.2-pro"
+	maxIterations       = 50
+	contextWindowTokens = 400_000 // GPT-5.2-Pro and GPT-5.2 context window size
 )
 
 // DeepAnalysisClient handles communication with OpenAI's Responses API
 type DeepAnalysisClient struct {
-	apiKey    string
-	client    *openai.Client
-	fileOps   agent.FileOps
-	scout     *agent.Scout
-	tools     []responses.ToolUnionParam
-	toolCache map[string]string
-	cacheMu   sync.Mutex
+	apiKey     string
+	client     *openai.Client
+	fileOps    agent.FileOps
+	scout      *agent.Scout
+	scoutModel string
+	tools      []responses.ToolUnionParam
+	toolCache  map[string]string
+	cacheMu    sync.Mutex
 }
 
 // AnalysisOptions controls request behavior.
@@ -54,11 +56,12 @@ func New(apiKey string, fileOps agent.FileOps, scoutModel string) *DeepAnalysisC
 	}
 
 	c := &DeepAnalysisClient{
-		apiKey:    apiKey,
-		client:    &client,
-		fileOps:   fileOps,
-		scout:     agent.NewScout(apiKey, scoutModel, fileOps),
-		toolCache: make(map[string]string),
+		apiKey:     apiKey,
+		client:     &client,
+		fileOps:    fileOps,
+		scout:      agent.NewScout(apiKey, scoutModel, fileOps),
+		scoutModel: scoutModel,
+		toolCache:  make(map[string]string),
 	}
 	c.tools = c.buildTools()
 
@@ -130,7 +133,7 @@ func (c *DeepAnalysisClient) Analyze(ctx context.Context, document string, opts 
 
 			// Calculate costs
 			researcherCost := estimateCost(defaultModel, totalInputTokens, totalOutputTokens)
-			scoutCost := estimateCost(agent.DefaultScoutModel, scoutUsage.InputTokens, scoutUsage.OutputTokens)
+			scoutCost := estimateCost(c.scoutModel, scoutUsage.InputTokens, scoutUsage.OutputTokens)
 			totalCost := researcherCost + scoutCost
 
 			cacheHitRate := 0.0
@@ -146,13 +149,18 @@ func (c *DeepAnalysisClient) Analyze(ctx context.Context, document string, opts 
 				"cache_hit_rate", fmt.Sprintf("%.1f%%", cacheHitRate),
 				"cost_usd", fmt.Sprintf("$%.4f", researcherCost))
 
-			log.Info("Scout usage (GPT-5.1)",
+			log.Info(fmt.Sprintf("Scout usage (%s)", c.scoutModel),
 				"api_calls", scoutUsage.Calls,
 				"input_tokens", scoutUsage.InputTokens,
 				"output_tokens", scoutUsage.OutputTokens,
 				"cost_usd", fmt.Sprintf("$%.4f", scoutCost))
 
 			log.Info("Total cost", "usd", fmt.Sprintf("$%.4f", totalCost))
+
+			// Context window usage (final response's input tokens = current context size)
+			contextUsed := response.Usage.InputTokens
+			contextPct := (float64(contextUsed) / float64(contextWindowTokens)) * 100
+			log.Info("Context window", "used", fmt.Sprintf("%d/%d (%.1f%%)", contextUsed, contextWindowTokens, contextPct))
 
 			return AnalysisResult{
 				Text:       text,
